@@ -14,6 +14,7 @@ static SDL_Renderer *renderer = NULL;
 #define TILE_SIZE 20
 
 SDL_FRect drawRect;
+bool grow;
 int direction;
 #define UP 0
 #define DOWN 1
@@ -65,6 +66,7 @@ void resetGame() {
   snakeSize = foodSize = 0;
   addToSnake(randomTile());
   for(int f = 0; f < (rand() % 4) + 3; f++) addToFood(randomTile());
+  grow = false;
   direction = (rand() % 4);
 }
 
@@ -134,9 +136,31 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     SDL_RenderFillRect(renderer, &drawRect);
     if((snakeSize > 0) && (food[i].x == snake[0].x) &&
         (food[i].y == snake[0].y)) {
+      grow = true;
       food[i] = randomTile();
     }
   }
+
+  if(grow) addToSnake(snake[snakeSize]);
+  grow = false;
+
+  for(size_t i = snakeSize; i > 0; i--) {
+    if((snakeSize > 0) && (snake[0].x == snake[i].x) &&
+        (snake[0].y == snake[i].y)) {
+      printf("You died.\n");
+      resetGame();
+    }
+    snake[i].x = snake[i - 1].x;
+    snake[i].y = snake[i - 1].y;
+  }
+
+  SDL_SetRenderDrawColor(renderer, 180, 50, 50, SDL_ALPHA_OPAQUE);
+  for(size_t i = snakeSize; i > 0; i--) {
+    drawRect.x = snake[i].x * TILE_SIZE;
+    drawRect.y = snake[i].y * TILE_SIZE;
+    SDL_RenderFillRect(renderer, &drawRect);
+  }
+
   if(snakeSize > 0) {
     if(direction == UP) snake[0].y--;
     if(direction == DOWN) snake[0].y++;
@@ -153,6 +177,11 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   }
 
   SDL_RenderPresent(renderer);
+
+  if(snakeSize >= (WINDOW_WIDTH / TILE_SIZE) * (WINDOW_HEIGHT / TILE_SIZE)) {
+    printf("You won!\n");
+    resetGame();
+  }
 
   SDL_Delay(90);
   return SDL_APP_CONTINUE;
