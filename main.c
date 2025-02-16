@@ -25,8 +25,8 @@ SDL_Point randomTile() {
                      rand() % (WINDOW_HEIGHT / TILE_SIZE - 1)};
 }
 
-SDL_Point* snake;
-size_t snakeSize, snakeCap;
+SDL_Point *snake, *food;
+size_t snakeSize, snakeCap, foodSize, foodCap;
 
 void addToSnake(SDL_Point point) {
   if(snakeSize == snakeCap) {
@@ -34,6 +34,7 @@ void addToSnake(SDL_Point point) {
     SDL_Point *tmp_snake = (SDL_Point *)realloc(snake, newCap * sizeof(SDL_Point));
     if(tmp_snake == NULL) {
       free(snake);
+      free(food);
       exit(1);
     }
     snake = tmp_snake;
@@ -43,9 +44,27 @@ void addToSnake(SDL_Point point) {
   snakeSize++;
 }
 
+void addToFood(SDL_Point point) {
+  if(foodSize == foodCap) {
+    size_t newCap = (foodCap == 0) ? 1 : foodCap * 2;
+    SDL_Point *tmp_food =
+        (SDL_Point *)realloc(food, newCap * sizeof(SDL_Point));
+    if(tmp_food == NULL) {
+      free(snake);
+      free(food);
+      exit(1);
+    }
+    food = tmp_food;
+    foodCap = newCap;
+  }
+  food[foodSize] = point;
+  foodSize++;
+}
+
 void resetGame() {
-  snakeSize = 0;
+  snakeSize = foodSize = 0;
   addToSnake(randomTile());
+  for(int f = 0; f < (rand() % 4) + 3; f++) addToFood(randomTile());
   direction = (rand() % 4);
 }
 
@@ -95,6 +114,9 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     case SDL_SCANCODE_RIGHT:
       direction = RIGHT;
       break;
+    case SDL_SCANCODE_E:
+      resetGame();
+      break;
     }
     break;
   }
@@ -105,6 +127,16 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
   SDL_RenderClear(renderer);
 
+  SDL_SetRenderDrawColor(renderer, 0, 255, 0, SDL_ALPHA_OPAQUE);
+  for(size_t i = 0; i < foodSize; i++) {
+    drawRect.x = food[i].x * TILE_SIZE;
+    drawRect.y = food[i].y * TILE_SIZE;
+    SDL_RenderFillRect(renderer, &drawRect);
+    if((snakeSize > 0) && (food[i].x == snake[0].x) &&
+        (food[i].y == snake[0].y)) {
+      food[i] = randomTile();
+    }
+  }
   if(snakeSize > 0) {
     if(direction == UP) snake[0].y--;
     if(direction == DOWN) snake[0].y++;
@@ -128,4 +160,5 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
   free(snake);
+  free(food);
 }
